@@ -13,9 +13,12 @@ router.get('/stream', (req: Request, res: Response): void => {
   const currentFile = torrentService.getCurrentStreamingFile();
 
   if (!currentFile) {
+    console.error('Stream request but no file is set. Current file:', currentFile);
     res.status(404).send('No file is currently streaming');
     return;
   }
+
+  console.log('Streaming file:', currentFile.name, 'Size:', currentFile.length);
 
   const fileSize = currentFile.length;
   const range = req.headers.range;
@@ -97,6 +100,35 @@ router.get('/stream-local/:id', async (req: Request, res: Response): Promise<voi
   });
 });
 
+// Helper function to get platform-specific VLC configuration
+function getVLCConfig() {
+  const platform = process.platform;
+
+  if (platform === 'darwin') {
+    // macOS
+    return {
+      path: '/Applications/VLC.app/Contents/MacOS/VLC',
+      args: (url: string) => [url, '--fullscreen', '--no-video-title-show']
+    };
+  } else {
+    // Linux/Raspberry Pi
+    return {
+      path: 'vlc',
+      args: (url: string) => [
+        url,
+        '--fullscreen',
+        '--no-video-title-show',
+        '--avcodec-hw=none',
+        '--aout=alsa',
+        '--alsa-audio-device=hw:1,0',
+        '--no-dbus',
+        '--intf',
+        'qt'
+      ]
+    };
+  }
+}
+
 // Play a movie (from torrent or local)
 router.post('/play', async (req: Request, res: Response): Promise<void> => {
   const { magnetUri, movieId } = req.body;
@@ -104,7 +136,9 @@ router.post('/play', async (req: Request, res: Response): Promise<void> => {
   try {
     if (magnetUri) {
       // Stream from torrent
+      console.log('Starting torrent stream for:', magnetUri);
       await torrentService.streamTorrent(magnetUri);
+      console.log('Torrent ready, spawning VLC...');
       torrentService.spawnVLC();
       res.status(202).json({ message: 'Playback initiated — preparing stream…' });
     } else if (movieId) {
@@ -116,21 +150,31 @@ router.post('/play', async (req: Request, res: Response): Promise<void> => {
         return;
       }
 
-      spawn('vlc', [
-        `http://localhost:${config.PORT}/api/playback/stream-local/${movieId}`,
-        '--fullscreen',
-        '--no-video-title-show',
-        '--avcodec-hw=none',
-        '--aout=alsa',
-        '--alsa-audio-device=hw:1,0',
-        '--no-dbus',
-        '--intf',
-        'qt'
-      ], {
-        stdio: 'inherit',
-        env: {
+      const vlcConfig = getVLCConfig();
+      const streamUrl = `http://localhost:${config.PORT}/api/playback/stream-local/${movieId}`;
+
+      const spawnOptions: any = {
+        stdio: 'inherit'
+      };
+
+      // Only set display env vars on Linux
+      if (process.platform !== 'darwin') {
+        spawnOptions.env = {
+          ...process.env,
           DISPLAY: config.VLC_DISPLAY,
           XAUTHORITY: config.VLC_XAUTHORITY
+        };
+      }
+
+      const vlcProcess = spawn(vlcConfig.path, vlcConfig.args(streamUrl), spawnOptions);
+
+      vlcProcess.on('error', (err) => {
+        console.error('Failed to launch VLC:', err.message);
+        console.error('Make sure VLC is installed:');
+        if (process.platform === 'darwin') {
+          console.error('  macOS: Download from https://www.videolan.org/vlc/');
+        } else {
+          console.error('  Linux: sudo apt install vlc');
         }
       });
 

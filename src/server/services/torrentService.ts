@@ -167,22 +167,70 @@ class TorrentService {
     });
   }
 
-  spawnVLC(): void {
-    spawn('vlc', [
-      `http://localhost:${config.PORT}/api/stream`,
+  private getVLCPath(): string {
+    // Detect platform and return appropriate VLC path
+    const platform = process.platform;
+
+    if (platform === 'darwin') {
+      // macOS
+      return '/Applications/VLC.app/Contents/MacOS/VLC';
+    } else {
+      // Linux/Raspberry Pi
+      return 'vlc';
+    }
+  }
+
+  private getVLCArgs(): string[] {
+    const platform = process.platform;
+    const baseArgs = [
+      `http://localhost:${config.PORT}/api/playback/stream`,
       '--fullscreen',
-      '--no-video-title-show',
-      '--avcodec-hw=none',
-      '--aout=alsa',
-      '--alsa-audio-device=hw:1,0',
-      '--no-dbus',
-      '--intf',
-      'qt'
-    ], {
-      stdio: 'inherit',
-      env: {
+      '--no-video-title-show'
+    ];
+
+    if (platform === 'darwin') {
+      // macOS-specific args
+      return baseArgs;
+    } else {
+      // Raspberry Pi/Linux-specific args
+      return [
+        ...baseArgs,
+        '--avcodec-hw=none',
+        '--aout=alsa',
+        '--alsa-audio-device=hw:1,0',
+        '--no-dbus',
+        '--intf',
+        'qt'
+      ];
+    }
+  }
+
+  spawnVLC(): void {
+    const vlcPath = this.getVLCPath();
+    const args = this.getVLCArgs();
+
+    const spawnOptions: any = {
+      stdio: 'inherit'
+    };
+
+    // Only set display env vars on Linux
+    if (process.platform !== 'darwin') {
+      spawnOptions.env = {
+        ...process.env,
         DISPLAY: config.VLC_DISPLAY,
         XAUTHORITY: config.VLC_XAUTHORITY
+      };
+    }
+
+    const vlcProcess = spawn(vlcPath, args, spawnOptions);
+
+    vlcProcess.on('error', (err) => {
+      console.error('Failed to launch VLC:', err.message);
+      console.error('Make sure VLC is installed:');
+      if (process.platform === 'darwin') {
+        console.error('  macOS: Download from https://www.videolan.org/vlc/');
+      } else {
+        console.error('  Linux: sudo apt install vlc');
       }
     });
   }
