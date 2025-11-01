@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Movie, YTSMovie, DownloadProgress, PlaybackStatus } from '../types/index.js';
+import type { Movie, YTSMovie, DownloadProgress, PlaybackStatus, Subtitle } from '../types/index.js';
 
 const api = axios.create({
   baseURL: '/api'
@@ -63,6 +63,7 @@ export const playMovie = async (params: {
   movieId?: string;
   title?: string;
   thumbnail?: string;
+  imdbCode?: string;
 }): Promise<void> => {
   await api.post('/playback/play', params);
 };
@@ -82,4 +83,22 @@ export const seekPlayback = async (seconds: number): Promise<void> => {
 
 export const stopPlayback = async (): Promise<void> => {
   await api.post('/playback/stop');
+};
+
+export const searchSubtitles = async (): Promise<Subtitle[]> => {
+  const response = await api.get<Subtitle[]>('/playback/subtitles/search');
+  return response.data;
+};
+
+export const loadSubtitle = async (fileId: number, fileName: string): Promise<void> => {
+  await api.post('/playback/subtitles/load', { fileId, fileName });
+};
+
+export const getSubtitleTracks = async (): Promise<{ count: number; tracks: string[] }> => {
+  const response = await api.get('/playback/subtitles/tracks');
+  return response.data;
+};
+
+export const selectSubtitleTrack = async (trackId: number): Promise<void> => {
+  await api.post('/playback/subtitles/select', { trackId });
 };

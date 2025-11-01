@@ -68,7 +68,8 @@ export default function Search() {
       await playMovie({
         magnetUri,
         title: selectedMovie.title,
-        thumbnail: selectedMovie.medium_cover_image
+        thumbnail: selectedMovie.medium_cover_image,
+        imdbCode: selectedMovie.imdb_code
       });
 
       handleCloseModal();

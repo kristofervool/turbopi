@@ -78,4 +78,15 @@ export interface PlaybackStatus {
   duration?: number;
   title?: string;
   thumbnail?: string;
+  imdbCode?: string;
+  hasSubtitles?: boolean;
+}
+
+export interface Subtitle {
+  id: string;
+  language: string;
+  fileName: string;
+  downloadCount: number;
+  rating: number;
+  fileId: number;
 }

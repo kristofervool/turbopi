@@ -29,6 +29,7 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^5.1.0",
+    "opensubtitles.com": "^1.1.0",
     "uuid": "^11.0.5",
     "webtorrent": "^2.6.3"
   },

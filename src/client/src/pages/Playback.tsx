@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Play, Pause, X, SkipBack, SkipForward, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePlayback } from '../hooks/usePlayback';
+import SubtitleSelector from '../components/SubtitleSelector';
 
 export default function Playback() {
   const navigate = useNavigate();
@@ -170,6 +171,9 @@ export default function Playback() {
           >
             <SkipForward className="h-6 w-6" />
           </Button>
+
+          {/* Subtitle Selector */}
+          <SubtitleSelector hasSubtitles={status.hasSubtitles || false} />
         </div>
 
         {/* Stop Button */}

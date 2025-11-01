@@ -5,6 +5,7 @@ import torrentService from '../services/torrentService.js';
 import libraryService from '../services/libraryService.js';
 import vlcService from '../services/vlcService.js';
 import metadataService from '../services/metadataService.js';
+import subtitleService from '../services/subtitleService.js';
 import { spawn } from 'child_process';
 import config from '../config.js';
 
@@ -143,13 +144,13 @@ function getVLCConfig() {
 
 // Play a movie (from torrent or local)
 router.post('/play', async (req: Request, res: Response): Promise<void> => {
-  const { magnetUri, movieId, title, thumbnail } = req.body;
+  const { magnetUri, movieId, title, thumbnail, imdbCode } = req.body;
 
   try {
     if (magnetUri) {
       // Stream from torrent
       console.log('Starting torrent stream for:', magnetUri);
-      await torrentService.streamTorrent(magnetUri, title, thumbnail);
+      await torrentService.streamTorrent(magnetUri, title, thumbnail, imdbCode);
       console.log('Torrent ready, spawning VLC...');
       const vlcReady = await torrentService.spawnVLC();
 
@@ -161,7 +162,7 @@ router.post('/play', async (req: Request, res: Response): Promise<void> => {
       res.status(202).json({ message: 'Playback initiated' });
     } else if (movieId) {
       // Play local file - get movie metadata
-      const movie = await metadataService.getMovieById(movieId);
+      const movie = await metadataService.getMovie(movieId);
 
       if (!movie) {
         res.status(404).json({ error: 'Movie not found' });
@@ -187,7 +188,7 @@ router.post('/play', async (req: Request, res: Response): Promise<void> => {
       const vlcProcess = spawn(vlcConfig.path, vlcConfig.args(streamUrl), spawnOptions);
 
       // Register session with VLC service
-      vlcService.setSession(vlcProcess, movie.title, movie.thumbnail);
+      vlcService.setSession(vlcProcess, movie.title, movie.thumbnail, movie.imdbCode);
 
       vlcProcess.on('error', (err) => {
         console.error('Failed to launch VLC:', err.message);
@@ -247,7 +248,9 @@ router.get('/status', async (req: Request, res: Response): Promise<void> => {
       currentTime: vlcStatus.time,
       duration: vlcStatus.length,
       title: session.title,
-      thumbnail: session.thumbnail
+      thumbnail: session.thumbnail,
+      imdbCode: session.imdbCode,
+      hasSubtitles: session.loadedSubtitles.length > 0
     });
   } catch (error) {
     console.error('Error getting playback status:', error);
@@ -310,6 +313,121 @@ router.post('/stop', async (req: Request, res: Response): Promise<void> => {
   } catch (error) {
     console.error('Error stopping playback:', error);
     res.status(500).json({ error: 'Failed to stop playback' });
+  }
+});
+
+// Search for subtitles
+router.get('/subtitles/search', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const session = vlcService.getSession();
+
+    if (!session) {
+      res.status(400).json({ error: 'No active playback session' });
+      return;
+    }
+
+    // Only use IMDB code if available for precise matching, otherwise fall back to title
+    const subtitles = await subtitleService.searchSubtitles(
+      session.imdbCode,
+      session.imdbCode ? undefined : session.title
+    );
+    res.json(subtitles);
+  } catch (error) {
+    console.error('Error searching subtitles:', error);
+    res.status(500).json({ error: 'Failed to search subtitles' });
+  }
+});
+
+// Load a subtitle
+router.post('/subtitles/load', async (req: Request, res: Response): Promise<void> => {
+  const { fileId, fileName } = req.body;
+
+  if (!fileId || !fileName) {
+    res.status(400).json({ error: 'fileId and fileName are required' });
+    return;
+  }
+
+  try {
+    const session = vlcService.getSession();
+
+    if (!session) {
+      res.status(400).json({ error: 'No active playback session' });
+      return;
+    }
+
+    // Download subtitle
+    const subtitlePath = await subtitleService.downloadSubtitle(fileId, fileName);
+
+    if (!subtitlePath) {
+      res.status(500).json({ error: 'Failed to download subtitle' });
+      return;
+    }
+
+    // Load subtitle into VLC
+    const loadSuccess = await vlcService.addSubtitle(subtitlePath);
+
+    if (!loadSuccess) {
+      res.status(500).json({ error: 'Failed to load subtitle into VLC' });
+      return;
+    }
+
+    // Wait a moment for VLC to register the new track
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Get current subtitle tracks to find the newly added one
+    const tracks = await vlcService.getSubtitleTracks();
+
+    if (tracks.count > 0 && tracks.trackIds.length > 0) {
+      // Select the last track (the one we just added) using its actual stream ID
+      const lastTrackId = tracks.trackIds[tracks.trackIds.length - 1];
+      await vlcService.setSubtitleTrack(lastTrackId);
+    }
+
+    res.json({ message: 'Subtitle loaded successfully', path: subtitlePath });
+  } catch (error) {
+    console.error('Error loading subtitle:', error);
+    res.status(500).json({ error: 'Failed to load subtitle' });
+  }
+});
+
+// Get subtitle tracks
+router.get('/subtitles/tracks', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const session = vlcService.getSession();
+
+    if (!session) {
+      res.status(400).json({ error: 'No active playback session' });
+      return;
+    }
+
+    const trackCount = await vlcService.getSubtitleTracks();
+    res.json({ count: trackCount, tracks: session.loadedSubtitles });
+  } catch (error) {
+    console.error('Error getting subtitle tracks:', error);
+    res.status(500).json({ error: 'Failed to get subtitle tracks' });
+  }
+});
+
+// Select subtitle track
+router.post('/subtitles/select', async (req: Request, res: Response): Promise<void> => {
+  const { trackId } = req.body;
+
+  if (typeof trackId !== 'number') {
+    res.status(400).json({ error: 'trackId is required and must be a number' });
+    return;
+  }
+
+  try {
+    const success = await vlcService.setSubtitleTrack(trackId);
+
+    if (success) {
+      res.json({ message: 'Subtitle track selected' });
+    } else {
+      res.status(400).json({ error: 'No active playback' });
+    }
+  } catch (error) {
+    console.error('Error selecting subtitle track:', error);
+    res.status(500).json({ error: 'Failed to select subtitle track' });
   }
 });
 

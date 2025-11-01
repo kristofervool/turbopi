@@ -14,6 +14,8 @@ interface PlaybackSession {
   title: string;
   thumbnail?: string;
   startTime: Date;
+  imdbCode?: string;
+  loadedSubtitles: string[];
 }
 
 class VLCService {
@@ -30,12 +32,14 @@ class VLCService {
     return { Authorization: `Basic ${auth}` };
   }
 
-  setSession(vlcProcess: ChildProcess, title: string, thumbnail?: string): void {
+  setSession(vlcProcess: ChildProcess, title: string, thumbnail?: string, imdbCode?: string): void {
     this.currentSession = {
       vlcProcess,
       title,
       thumbnail,
-      startTime: new Date()
+      startTime: new Date(),
+      imdbCode,
+      loadedSubtitles: []
     };
   }
 
@@ -173,6 +177,85 @@ class VLCService {
       }
       this.clearSession();
 
+      return false;
+    }
+  }
+
+  async addSubtitle(subtitlePath: string): Promise<boolean> {
+    if (!this.currentSession) {
+      return false;
+    }
+
+    try {
+      // VLC HTTP interface needs just the absolute path (no file:// scheme)
+      // URL encoding is done by encodeURIComponent
+      const encodedPath = encodeURIComponent(subtitlePath);
+
+      await axios.get(this.getVLCUrl(`/requests/status.json?command=addsubtitle&val=${encodedPath}`), {
+        headers: this.getAuthHeader(),
+        timeout: 2000
+      });
+
+      // Track loaded subtitle
+      this.currentSession.loadedSubtitles.push(subtitlePath);
+      return true;
+    } catch (error) {
+      console.error('Failed to add subtitle:', error);
+      return false;
+    }
+  }
+
+  async getSubtitleTracks(): Promise<{ count: number; trackIds: number[] }> {
+    if (!this.currentSession) {
+      return { count: 0, trackIds: [] };
+    }
+
+    try {
+      const response = await axios.get(this.getVLCUrl('/requests/status.json'), {
+        headers: this.getAuthHeader(),
+        timeout: 2000
+      });
+
+      // Parse streams from information.category
+      const category = response.data?.information?.category || {};
+      const subtitleStreams: number[] = [];
+
+      // Find all subtitle streams
+      Object.keys(category).forEach((key) => {
+        if (key.startsWith('Stream ')) {
+          const stream = category[key];
+          if (stream.Type === 'Subtitle') {
+            // Extract stream number from key like "Stream 2"
+            const streamNum = parseInt(key.replace('Stream ', ''), 10);
+            subtitleStreams.push(streamNum);
+          }
+        }
+      });
+
+      return {
+        count: subtitleStreams.length,
+        trackIds: subtitleStreams
+      };
+    } catch (error) {
+      console.error('Failed to get subtitle tracks:', error);
+      return { count: 0, trackIds: [] };
+    }
+  }
+
+  async setSubtitleTrack(trackId: number): Promise<boolean> {
+    if (!this.currentSession) {
+      return false;
+    }
+
+    try {
+      // trackId: -1 = disable, 0+ = subtitle track index
+      await axios.get(this.getVLCUrl(`/requests/status.json?command=subtitle_track&val=${trackId}`), {
+        headers: this.getAuthHeader(),
+        timeout: 2000
+      });
+      return true;
+    } catch (error) {
+      console.error('Failed to set subtitle track:', error);
       return false;
     }
   }

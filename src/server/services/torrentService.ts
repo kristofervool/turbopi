@@ -15,8 +15,11 @@ class TorrentService {
   private currentStreamingTorrent: Torrent | null = null;
   private currentStreamingTitle: string = '';
   private currentStreamingThumbnail?: string;
+  private currentStreamingImdbCode?: string;
   private streamingTimeout: NodeJS.Timeout | null = null;
-  private readonly STREAMING_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+  // Disable automatic timeout - only cleanup on explicit stop
+  // VLC buffers heavily, so stream requests may be infrequent during playback
+  private readonly STREAMING_TIMEOUT_MS = 0; // Disabled
 
   constructor() {
     this.client = new WebTorrent();
@@ -52,9 +55,9 @@ class TorrentService {
 
       this.downloads.set(downloadId, progress);
 
-      torrent.on('error', (err) => {
+      torrent.on('error', (err: Error | string) => {
         progress.status = 'error';
-        progress.error = err.message;
+        progress.error = typeof err === 'string' ? err : err.message;
         console.error('Torrent error:', err);
         reject(err);
       });
@@ -122,12 +125,13 @@ class TorrentService {
     return Array.from(this.downloads.values());
   }
 
-  async streamTorrent(magnetUri: string, title?: string, thumbnail?: string): Promise<void> {
+  async streamTorrent(magnetUri: string, title?: string, thumbnail?: string, imdbCode?: string): Promise<void> {
     // Clean up any existing streaming torrent first
     this.cleanupStreamingTorrent();
 
     this.currentStreamingTitle = title || 'Unknown Movie';
     this.currentStreamingThumbnail = thumbnail;
+    this.currentStreamingImdbCode = imdbCode;
 
     return new Promise((resolve, reject) => {
       const torrent = this.client.add(magnetUri);
@@ -152,8 +156,8 @@ class TorrentService {
         resolve();
       });
 
-      torrent.on('error', (err) => {
-        console.error('Torrent error:', err.message);
+      torrent.on('error', (err: Error | string) => {
+        console.error('Torrent error:', typeof err === 'string' ? err : err.message);
         reject(err);
       });
     });
@@ -170,13 +174,16 @@ class TorrentService {
     // Clear existing timeout
     if (this.streamingTimeout) {
       clearTimeout(this.streamingTimeout);
+      this.streamingTimeout = null;
     }
 
-    // Set new timeout to cleanup after inactivity
-    this.streamingTimeout = setTimeout(() => {
-      console.log('Streaming timeout reached, cleaning up torrent...');
-      this.cleanupStreamingTorrent();
-    }, this.STREAMING_TIMEOUT_MS);
+    // Only set timeout if enabled (STREAMING_TIMEOUT_MS > 0)
+    if (this.STREAMING_TIMEOUT_MS > 0) {
+      this.streamingTimeout = setTimeout(() => {
+        console.log('Streaming timeout reached, cleaning up torrent...');
+        this.cleanupStreamingTorrent();
+      }, this.STREAMING_TIMEOUT_MS);
+    }
   }
 
   cleanupStreamingTorrent(): void {
@@ -214,7 +221,7 @@ class TorrentService {
     this.resetStreamingTimeout();
 
     const fileStream = this.currentStreamingFile.createReadStream({ start, end });
-    pipeline(fileStream, res, err => {
+    pipeline(fileStream, res, (err: NodeJS.ErrnoException | null) => {
       if (err && err.code !== 'ERR_STREAM_PREMATURE_CLOSE') {
         console.error('Stream pipeline error:', err.message);
       }
@@ -281,7 +288,7 @@ class TorrentService {
     const vlcProcess = spawn(vlcPath, args, spawnOptions);
 
     // Register VLC session with vlcService
-    vlcService.setSession(vlcProcess, this.currentStreamingTitle, this.currentStreamingThumbnail);
+    vlcService.setSession(vlcProcess, this.currentStreamingTitle, this.currentStreamingThumbnail, this.currentStreamingImdbCode);
 
     vlcProcess.on('error', (err) => {
       console.error('Failed to launch VLC:', err.message);
