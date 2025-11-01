@@ -1,4 +1,4 @@
-import { DownloadProgress as DownloadProgressType } from '../types';
+import type { DownloadProgress as DownloadProgressType } from '../types/index.js';
 
 interface DownloadProgressProps {
   download: DownloadProgressType;

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Movie, YTSMovie, DownloadProgress } from '../types';
+import type { Movie, YTSMovie, DownloadProgress } from '../types/index.js';
 
 const api = axios.create({
   baseURL: '/api'

@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import SearchBar from '../components/SearchBar';
-import MovieCard from '../components/MovieCard';
-import { Movie } from '../types';
-import { getLibrary, searchLibrary, deleteMovie, playMovie, scanLibrary } from '../services/api';
+import SearchBar from '../components/SearchBar.tsx';
+import MovieCard from '../components/MovieCard.tsx';
+import type { Movie } from '../types/index.js';
+import { getLibrary, searchLibrary, deleteMovie, playMovie, scanLibrary } from '../services/api.js';
 
 export default function Library() {
   const [movies, setMovies] = useState<Movie[]>([]);

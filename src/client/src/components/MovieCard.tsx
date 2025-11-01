@@ -1,4 +1,4 @@
-import { Movie, YTSMovie } from '../types';
+import type { Movie, YTSMovie } from '../types/index.js';
 
 interface MovieCardProps {
   movie: Movie | YTSMovie;

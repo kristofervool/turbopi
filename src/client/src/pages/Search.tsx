@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import SearchBar from '../components/SearchBar';
-import MovieCard from '../components/MovieCard';
-import { YTSMovie } from '../types';
-import { searchYTS, downloadTorrent, playMovie } from '../services/api';
+import SearchBar from '../components/SearchBar.tsx';
+import MovieCard from '../components/MovieCard.tsx';
+import type { YTSMovie } from '../types/index.js';
+import { searchYTS, downloadTorrent, playMovie } from '../services/api.js';
 
 export default function Search() {
   const [movies, setMovies] = useState<YTSMovie[]>([]);

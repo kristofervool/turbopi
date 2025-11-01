@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import DownloadProgress from '../components/DownloadProgress';
-import { DownloadProgress as DownloadProgressType } from '../types';
-import { getAllDownloads } from '../services/api';
+import DownloadProgress from '../components/DownloadProgress.tsx';
+import type { DownloadProgress as DownloadProgressType } from '../types/index.js';
+import { getAllDownloads } from '../services/api.js';
 
 export default function Downloads() {
   const [downloads, setDownloads] = useState<DownloadProgressType[]>([]);
