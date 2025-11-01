@@ -62,6 +62,7 @@ export interface DownloadProgress {
 }
 
 export interface Config {
+  HOST: string;
   PORT: number;
   MOVIES_DIR: string;
   METADATA_FILE: string;

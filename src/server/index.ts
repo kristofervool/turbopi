@@ -8,6 +8,8 @@ import libraryRouter from './routes/library.js';
 import downloadRouter from './routes/download.js';
 import playbackRouter from './routes/playback.js';
 import libraryService from './services/libraryService.js';
+import { getLocalIpAddress } from './utils/network.js';
+import { advertiseMdns } from './utils/mdns.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -49,8 +51,22 @@ if (config.NODE_ENV === 'production') {
   }
 })();
 
-app.listen(config.PORT, () => {
-  console.log(`Server listening on http://localhost:${config.PORT}`);
+app.listen(config.PORT, config.HOST, () => {
+  console.log('\n🎬 TurboPi Server Started');
+  console.log('─────────────────────────────────────');
   console.log(`Environment: ${config.NODE_ENV}`);
   console.log(`Movies directory: ${config.MOVIES_DIR}`);
+  console.log('\n📡 Access URLs:');
+  console.log(`   Local:   http://localhost:${config.PORT}`);
+
+  const localIp = getLocalIpAddress();
+  if (localIp) {
+    console.log(`   Network: http://${localIp}:${config.PORT}`);
+  }
+
+  // Advertise mDNS service
+  advertiseMdns(config.PORT);
+
+  console.log(`\n💡 From your phone, open: http://turbopi.local:${config.PORT}`);
+  console.log('─────────────────────────────────────\n');
 });

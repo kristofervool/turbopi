@@ -9,6 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const config: Config = {
+  HOST: process.env.HOST || '0.0.0.0',
   PORT: parseInt(process.env.PORT || '3000', 10),
   MOVIES_DIR: process.env.MOVIES_DIR || path.join(process.env.HOME || '/home/kristofervool', 'movies'),
   METADATA_FILE: process.env.METADATA_FILE || path.join(process.env.HOME || '/home/kristofervool', 'movies', 'metadata.json'),

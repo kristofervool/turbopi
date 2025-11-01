@@ -119,11 +119,26 @@ src/
 ### Configuration
 
 Environment variables (create `.env` from `.env.example`):
+- `HOST` - Server bind address (default: 0.0.0.0 for network access)
 - `PORT` - Backend server port (default: 3000)
 - `MOVIES_DIR` - Where to store downloaded movies
 - `DISPLAY` - X11 display for VLC (default: :0)
 - `XAUTHORITY` - X11 auth file path
 - `NODE_ENV` - development | production
+
+### Network Access
+
+TurboPi supports mDNS (Bonjour) for easy network access:
+- **From your phone/tablet**: Open `http://turbopi.local:3000`
+- **From any device on the network**: Use the IP address shown on startup
+- Server binds to `0.0.0.0` by default to accept network connections
+- mDNS service is automatically advertised when server starts
+
+**Requirements for mDNS**:
+- Raspberry Pi: Install Avahi daemon (`sudo apt-get install avahi-daemon`)
+- iOS/Mac: Built-in support (Bonjour)
+- Android: Install a Bonjour/mDNS service app
+- Windows: Install Bonjour Print Services
 
 ### Raspberry Pi Specifics
 
@@ -151,11 +166,20 @@ Same types mirrored in frontend at `src/client/src/types/index.ts`
 
 ## Production Deployment
 
-1. Build both frontend and backend: `npm run build`
-2. Backend compiles to `dist/server/`
-3. Frontend builds to `src/client/dist/`
-4. `npm start` serves React SPA from Express in production mode
-5. All routes serve index.html for client-side routing
+1. **On Raspberry Pi**, install Avahi for mDNS support:
+   ```bash
+   sudo apt-get update
+   sudo apt-get install avahi-daemon
+   sudo systemctl enable avahi-daemon
+   sudo systemctl start avahi-daemon
+   ```
+
+2. Build both frontend and backend: `npm run build`
+3. Backend compiles to `dist/server/`
+4. Frontend builds to `src/client/dist/`
+5. `npm start` serves React SPA from Express in production mode
+6. Server displays network access URLs on startup
+7. Access from phone: `http://turbopi.local:3000`
 
 ## Development Notes
 
