@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import SearchBar from '../components/SearchBar.tsx';
 import MovieCard from '../components/MovieCard.tsx';
@@ -7,6 +8,7 @@ import type { YTSMovie, YTSTorrent } from '../types/index.js';
 import { searchYTS, downloadTorrent, playMovie } from '../services/api.js';
 
 export default function Search() {
+  const navigate = useNavigate();
   const [movies, setMovies] = useState<YTSMovie[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -63,9 +65,15 @@ export default function Search() {
     try {
       const magnetUri = `magnet:?xt=urn:btih:${torrent.hash}&dn=${encodeURIComponent(selectedMovie.title)}`;
 
-      await playMovie({ magnetUri });
-      alert(`Starting playback for ${selectedMovie.title} (${torrent.quality})`);
+      await playMovie({
+        magnetUri,
+        title: selectedMovie.title,
+        thumbnail: selectedMovie.medium_cover_image
+      });
+
       handleCloseModal();
+      // Navigate to playback page
+      navigate('/playback');
     } catch (err) {
       alert('Failed to start playback');
       console.error(err);

@@ -3,6 +3,8 @@ import { createReadStream, existsSync, statSync } from 'fs';
 import { pipeline } from 'stream';
 import torrentService from '../services/torrentService.js';
 import libraryService from '../services/libraryService.js';
+import vlcService from '../services/vlcService.js';
+import metadataService from '../services/metadataService.js';
 import { spawn } from 'child_process';
 import config from '../config.js';
 
@@ -108,7 +110,15 @@ function getVLCConfig() {
     // macOS
     return {
       path: '/Applications/VLC.app/Contents/MacOS/VLC',
-      args: (url: string) => [url, '--fullscreen', '--no-video-title-show']
+      args: (url: string) => [
+        url,
+        '--fullscreen',
+        '--no-video-title-show',
+        '--http-host=0.0.0.0',
+        '--http-port=8080',
+        '--http-password=turbopi',
+        '--extraintf=http'
+      ]
     };
   } else {
     // Linux/Raspberry Pi
@@ -122,8 +132,10 @@ function getVLCConfig() {
         '--aout=alsa',
         '--alsa-audio-device=hw:1,0',
         '--no-dbus',
-        '--intf',
-        'qt'
+        '--http-host=0.0.0.0',
+        '--http-port=8080',
+        '--http-password=turbopi',
+        '--extraintf=http'
       ]
     };
   }
@@ -131,21 +143,27 @@ function getVLCConfig() {
 
 // Play a movie (from torrent or local)
 router.post('/play', async (req: Request, res: Response): Promise<void> => {
-  const { magnetUri, movieId } = req.body;
+  const { magnetUri, movieId, title, thumbnail } = req.body;
 
   try {
     if (magnetUri) {
       // Stream from torrent
       console.log('Starting torrent stream for:', magnetUri);
-      await torrentService.streamTorrent(magnetUri);
+      await torrentService.streamTorrent(magnetUri, title, thumbnail);
       console.log('Torrent ready, spawning VLC...');
-      torrentService.spawnVLC();
-      res.status(202).json({ message: 'Playback initiated — preparing stream…' });
-    } else if (movieId) {
-      // Play local file
-      const filePath = await libraryService.getMoviePath(movieId);
+      const vlcReady = await torrentService.spawnVLC();
 
-      if (!filePath) {
+      if (!vlcReady) {
+        res.status(500).json({ error: 'VLC HTTP interface failed to start' });
+        return;
+      }
+
+      res.status(202).json({ message: 'Playback initiated' });
+    } else if (movieId) {
+      // Play local file - get movie metadata
+      const movie = await metadataService.getMovieById(movieId);
+
+      if (!movie) {
         res.status(404).json({ error: 'Movie not found' });
         return;
       }
@@ -168,6 +186,9 @@ router.post('/play', async (req: Request, res: Response): Promise<void> => {
 
       const vlcProcess = spawn(vlcConfig.path, vlcConfig.args(streamUrl), spawnOptions);
 
+      // Register session with VLC service
+      vlcService.setSession(vlcProcess, movie.title, movie.thumbnail);
+
       vlcProcess.on('error', (err) => {
         console.error('Failed to launch VLC:', err.message);
         console.error('Make sure VLC is installed:');
@@ -176,11 +197,22 @@ router.post('/play', async (req: Request, res: Response): Promise<void> => {
         } else {
           console.error('  Linux: sudo apt install vlc');
         }
+        vlcService.clearSession();
       });
 
       vlcProcess.on('exit', (code) => {
         console.log(`VLC exited with code ${code} (local playback)`);
+        vlcService.clearSession();
       });
+
+      // Wait for VLC HTTP interface to be ready
+      console.log('Waiting for VLC HTTP interface...');
+      const vlcReady = await vlcService.waitForVLC();
+
+      if (!vlcReady) {
+        res.status(500).json({ error: 'VLC HTTP interface failed to start' });
+        return;
+      }
 
       res.status(202).json({ message: 'Playback initiated' });
     } else {
@@ -189,6 +221,95 @@ router.post('/play', async (req: Request, res: Response): Promise<void> => {
   } catch (error) {
     console.error('Playback error:', error);
     res.status(500).json({ error: 'Failed to start playback' });
+  }
+});
+
+// Get current playback status
+router.get('/status', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const session = vlcService.getSession();
+
+    if (!session) {
+      res.json({ isActive: false });
+      return;
+    }
+
+    const vlcStatus = await vlcService.getStatus();
+
+    if (!vlcStatus) {
+      res.json({ isActive: false });
+      return;
+    }
+
+    res.json({
+      isActive: true,
+      isPlaying: vlcStatus.state === 'playing',
+      currentTime: vlcStatus.time,
+      duration: vlcStatus.length,
+      title: session.title,
+      thumbnail: session.thumbnail
+    });
+  } catch (error) {
+    console.error('Error getting playback status:', error);
+    res.status(500).json({ error: 'Failed to get playback status' });
+  }
+});
+
+// Pause/resume playback
+router.post('/pause', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const success = await vlcService.pause();
+
+    if (success) {
+      res.json({ message: 'Playback toggled' });
+    } else {
+      res.status(400).json({ error: 'No active playback' });
+    }
+  } catch (error) {
+    console.error('Error toggling pause:', error);
+    res.status(500).json({ error: 'Failed to toggle pause' });
+  }
+});
+
+// Seek to position
+router.post('/seek', async (req: Request, res: Response): Promise<void> => {
+  const { seconds } = req.body;
+
+  if (typeof seconds !== 'number') {
+    res.status(400).json({ error: 'seconds parameter is required' });
+    return;
+  }
+
+  try {
+    const success = await vlcService.seek(seconds);
+
+    if (success) {
+      res.json({ message: 'Seeked successfully' });
+    } else {
+      res.status(400).json({ error: 'No active playback' });
+    }
+  } catch (error) {
+    console.error('Error seeking:', error);
+    res.status(500).json({ error: 'Failed to seek' });
+  }
+});
+
+// Stop playback
+router.post('/stop', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const success = await vlcService.stop();
+
+    // Also cleanup torrent if streaming
+    torrentService.cleanupStreamingTorrent();
+
+    if (success) {
+      res.json({ message: 'Playback stopped' });
+    } else {
+      res.status(400).json({ error: 'No active playback' });
+    }
+  } catch (error) {
+    console.error('Error stopping playback:', error);
+    res.status(500).json({ error: 'Failed to stop playback' });
   }
 });
 

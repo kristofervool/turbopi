@@ -70,3 +70,12 @@ export interface Config {
   VLC_XAUTHORITY: string;
   NODE_ENV: string;
 }
+
+export interface PlaybackStatus {
+  isActive: boolean;
+  isPlaying?: boolean;
+  currentTime?: number;
+  duration?: number;
+  title?: string;
+  thumbnail?: string;
+}

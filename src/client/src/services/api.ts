@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Movie, YTSMovie, DownloadProgress } from '../types/index.js';
+import type { Movie, YTSMovie, DownloadProgress, PlaybackStatus } from '../types/index.js';
 
 const api = axios.create({
   baseURL: '/api'
@@ -58,6 +58,28 @@ export const getAllDownloads = async (): Promise<DownloadProgress[]> => {
   return response.data;
 };
 
-export const playMovie = async (params: { magnetUri?: string; movieId?: string }): Promise<void> => {
+export const playMovie = async (params: {
+  magnetUri?: string;
+  movieId?: string;
+  title?: string;
+  thumbnail?: string;
+}): Promise<void> => {
   await api.post('/playback/play', params);
+};
+
+export const getPlaybackStatus = async (): Promise<PlaybackStatus> => {
+  const response = await api.get<PlaybackStatus>('/playback/status');
+  return response.data;
+};
+
+export const togglePause = async (): Promise<void> => {
+  await api.post('/playback/pause');
+};
+
+export const seekPlayback = async (seconds: number): Promise<void> => {
+  await api.post('/playback/seek', { seconds });
+};
+
+export const stopPlayback = async (): Promise<void> => {
+  await api.post('/playback/stop');
 };

@@ -46,3 +46,12 @@ export interface DownloadProgress {
   status: 'downloading' | 'seeding' | 'complete' | 'error';
   error?: string;
 }
+
+export interface PlaybackStatus {
+  isActive: boolean;
+  isPlaying?: boolean;
+  currentTime?: number;
+  duration?: number;
+  title?: string;
+  thumbnail?: string;
+}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Loader2, RefreshCw } from 'lucide-react';
 import SearchBar from '../components/SearchBar.tsx';
 import MovieCard from '../components/MovieCard.tsx';
@@ -7,6 +8,7 @@ import { getLibrary, searchLibrary, deleteMovie, playMovie, scanLibrary } from '
 import { Button } from '@/components/ui/button';
 
 export default function Library() {
+  const navigate = useNavigate();
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -48,7 +50,8 @@ export default function Library() {
   const handlePlay = async (movie: Movie) => {
     try {
       await playMovie({ movieId: movie.id });
-      alert(`Starting playback for ${movie.title}`);
+      // Navigate to playback page
+      navigate('/playback');
     } catch (err) {
       alert('Failed to start playback');
       console.error(err);

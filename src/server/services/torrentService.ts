@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { DownloadProgress, Movie } from '../types/index.js';
 import config from '../config.js';
 import metadataService from './metadataService.js';
+import vlcService from './vlcService.js';
 import { spawn } from 'child_process';
 import { pipeline } from 'stream';
 
@@ -12,6 +13,8 @@ class TorrentService {
   private downloads: Map<string, DownloadProgress> = new Map();
   private currentStreamingFile: TorrentFile | null = null;
   private currentStreamingTorrent: Torrent | null = null;
+  private currentStreamingTitle: string = '';
+  private currentStreamingThumbnail?: string;
   private streamingTimeout: NodeJS.Timeout | null = null;
   private readonly STREAMING_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
@@ -119,9 +122,12 @@ class TorrentService {
     return Array.from(this.downloads.values());
   }
 
-  async streamTorrent(magnetUri: string): Promise<void> {
+  async streamTorrent(magnetUri: string, title?: string, thumbnail?: string): Promise<void> {
     // Clean up any existing streaming torrent first
     this.cleanupStreamingTorrent();
+
+    this.currentStreamingTitle = title || 'Unknown Movie';
+    this.currentStreamingThumbnail = thumbnail;
 
     return new Promise((resolve, reject) => {
       const torrent = this.client.add(magnetUri);
@@ -151,6 +157,13 @@ class TorrentService {
         reject(err);
       });
     });
+  }
+
+  getStreamingMetadata(): { title: string; thumbnail?: string } {
+    return {
+      title: this.currentStreamingTitle,
+      thumbnail: this.currentStreamingThumbnail
+    };
   }
 
   private resetStreamingTimeout(): void {
@@ -226,7 +239,11 @@ class TorrentService {
     const baseArgs = [
       `http://localhost:${config.PORT}/api/playback/stream`,
       '--fullscreen',
-      '--no-video-title-show'
+      '--no-video-title-show',
+      '--http-host=0.0.0.0',
+      '--http-port=8080',
+      '--http-password=turbopi',
+      '--extraintf=http'
     ];
 
     if (platform === 'darwin') {
@@ -239,14 +256,12 @@ class TorrentService {
         '--avcodec-hw=none',
         '--aout=alsa',
         '--alsa-audio-device=hw:1,0',
-        '--no-dbus',
-        '--intf',
-        'qt'
+        '--no-dbus'
       ];
     }
   }
 
-  spawnVLC(): void {
+  async spawnVLC(): Promise<boolean> {
     const vlcPath = this.getVLCPath();
     const args = this.getVLCArgs();
 
@@ -265,6 +280,9 @@ class TorrentService {
 
     const vlcProcess = spawn(vlcPath, args, spawnOptions);
 
+    // Register VLC session with vlcService
+    vlcService.setSession(vlcProcess, this.currentStreamingTitle, this.currentStreamingThumbnail);
+
     vlcProcess.on('error', (err) => {
       console.error('Failed to launch VLC:', err.message);
       console.error('Make sure VLC is installed:');
@@ -273,16 +291,23 @@ class TorrentService {
       } else {
         console.error('  Linux: sudo apt install vlc');
       }
+      vlcService.clearSession();
     });
 
     // Cleanup when VLC closes
     vlcProcess.on('exit', (code) => {
       console.log(`VLC exited with code ${code}, cleaning up streaming torrent...`);
       this.cleanupStreamingTorrent();
+      vlcService.clearSession();
     });
 
     // Reset timeout when VLC is active
     this.resetStreamingTimeout();
+
+    // Wait for VLC HTTP interface to be ready
+    console.log('Waiting for VLC HTTP interface...');
+    const ready = await vlcService.waitForVLC();
+    return ready;
   }
 }
 
