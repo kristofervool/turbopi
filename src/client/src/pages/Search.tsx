@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import SearchBar from '../components/SearchBar.tsx';
 import MovieCard from '../components/MovieCard.tsx';
-import type { YTSMovie } from '../types/index.js';
+import MovieModal from '../components/MovieModal.tsx';
+import type { YTSMovie, YTSTorrent } from '../types/index.js';
 import { searchYTS, downloadTorrent, playMovie } from '../services/api.js';
 
 export default function Search() {
   const [movies, setMovies] = useState<YTSMovie[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedMovie, setSelectedMovie] = useState<YTSMovie | null>(null);
 
   const handleSearch = async (query: string) => {
     setLoading(true);
@@ -23,34 +25,46 @@ export default function Search() {
     }
   };
 
-  const handleDownload = async (movie: YTSMovie) => {
+  const handleMovieClick = (movie: YTSMovie) => {
+    setSelectedMovie(movie);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedMovie(null);
+  };
+
+  const handleDownload = async (torrent: YTSTorrent) => {
+    if (!selectedMovie) return;
+
     try {
-      const torrent = movie.torrents[0]; // Get the first torrent (usually 720p or 1080p)
-      const magnetUri = `magnet:?xt=urn:btih:${torrent.hash}&dn=${encodeURIComponent(movie.title)}`;
+      const magnetUri = `magnet:?xt=urn:btih:${torrent.hash}&dn=${encodeURIComponent(selectedMovie.title)}`;
 
       await downloadTorrent(
         magnetUri,
-        movie.title,
-        movie.medium_cover_image,
-        movie.imdb_code,
-        movie.rating,
-        movie.genres
+        selectedMovie.title,
+        selectedMovie.medium_cover_image,
+        selectedMovie.imdb_code,
+        selectedMovie.rating,
+        selectedMovie.genres
       );
 
-      alert(`Download started for ${movie.title}`);
+      alert(`Download started for ${selectedMovie.title} (${torrent.quality})`);
+      handleCloseModal();
     } catch (err) {
       alert('Failed to start download');
       console.error(err);
     }
   };
 
-  const handlePlay = async (movie: YTSMovie) => {
+  const handlePlay = async (torrent: YTSTorrent) => {
+    if (!selectedMovie) return;
+
     try {
-      const torrent = movie.torrents[0];
-      const magnetUri = `magnet:?xt=urn:btih:${torrent.hash}&dn=${encodeURIComponent(movie.title)}`;
+      const magnetUri = `magnet:?xt=urn:btih:${torrent.hash}&dn=${encodeURIComponent(selectedMovie.title)}`;
 
       await playMovie({ magnetUri });
-      alert(`Starting playback for ${movie.title}`);
+      alert(`Starting playback for ${selectedMovie.title} (${torrent.quality})`);
+      handleCloseModal();
     } catch (err) {
       alert('Failed to start playback');
       console.error(err);
@@ -67,17 +81,23 @@ export default function Search() {
 
       <div className="movies-grid">
         {movies.map((movie) => (
-          <MovieCard
-            key={movie.id}
-            movie={movie}
-            onPlay={() => handlePlay(movie)}
-            onDownload={() => handleDownload(movie)}
-          />
+          <div key={movie.id} onClick={() => handleMovieClick(movie)}>
+            <MovieCard movie={movie} />
+          </div>
         ))}
       </div>
 
       {!loading && movies.length === 0 && !error && (
         <p className="empty-state">Search for movies to get started</p>
+      )}
+
+      {selectedMovie && (
+        <MovieModal
+          movie={selectedMovie}
+          onClose={handleCloseModal}
+          onPlay={handlePlay}
+          onDownload={handleDownload}
+        />
       )}
     </div>
   );
