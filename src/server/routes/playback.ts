@@ -178,6 +178,10 @@ router.post('/play', async (req: Request, res: Response): Promise<void> => {
         }
       });
 
+      vlcProcess.on('exit', (code) => {
+        console.log(`VLC exited with code ${code} (local playback)`);
+      });
+
       res.status(202).json({ message: 'Playback initiated' });
     } else {
       res.status(400).json({ error: 'Either magnetUri or movieId is required' });

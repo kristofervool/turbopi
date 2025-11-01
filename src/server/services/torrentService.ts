@@ -11,6 +11,9 @@ class TorrentService {
   private client: WebTorrent.Instance;
   private downloads: Map<string, DownloadProgress> = new Map();
   private currentStreamingFile: TorrentFile | null = null;
+  private currentStreamingTorrent: Torrent | null = null;
+  private streamingTimeout: NodeJS.Timeout | null = null;
+  private readonly STREAMING_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
   constructor() {
     this.client = new WebTorrent();
@@ -117,6 +120,9 @@ class TorrentService {
   }
 
   async streamTorrent(magnetUri: string): Promise<void> {
+    // Clean up any existing streaming torrent first
+    this.cleanupStreamingTorrent();
+
     return new Promise((resolve, reject) => {
       const torrent = this.client.add(magnetUri);
 
@@ -131,7 +137,12 @@ class TorrentService {
         }
 
         this.currentStreamingFile = file;
+        this.currentStreamingTorrent = torrent;
         console.log(`Streaming now: ${file.name}`);
+
+        // Set timeout for automatic cleanup
+        this.resetStreamingTimeout();
+
         resolve();
       });
 
@@ -140,6 +151,33 @@ class TorrentService {
         reject(err);
       });
     });
+  }
+
+  private resetStreamingTimeout(): void {
+    // Clear existing timeout
+    if (this.streamingTimeout) {
+      clearTimeout(this.streamingTimeout);
+    }
+
+    // Set new timeout to cleanup after inactivity
+    this.streamingTimeout = setTimeout(() => {
+      console.log('Streaming timeout reached, cleaning up torrent...');
+      this.cleanupStreamingTorrent();
+    }, this.STREAMING_TIMEOUT_MS);
+  }
+
+  cleanupStreamingTorrent(): void {
+    if (this.streamingTimeout) {
+      clearTimeout(this.streamingTimeout);
+      this.streamingTimeout = null;
+    }
+
+    if (this.currentStreamingTorrent) {
+      console.log(`Cleaning up streaming torrent: ${this.currentStreamingTorrent.name}`);
+      this.currentStreamingTorrent.destroy();
+      this.currentStreamingTorrent = null;
+      this.currentStreamingFile = null;
+    }
   }
 
   getCurrentStreamingFile(): TorrentFile | null {
@@ -158,6 +196,9 @@ class TorrentService {
     if (!this.currentStreamingFile) {
       throw new Error('No file is currently streaming');
     }
+
+    // Reset timeout on each stream request (indicates VLC is still active)
+    this.resetStreamingTimeout();
 
     const fileStream = this.currentStreamingFile.createReadStream({ start, end });
     pipeline(fileStream, res, err => {
@@ -233,6 +274,15 @@ class TorrentService {
         console.error('  Linux: sudo apt install vlc');
       }
     });
+
+    // Cleanup when VLC closes
+    vlcProcess.on('exit', (code) => {
+      console.log(`VLC exited with code ${code}, cleaning up streaming torrent...`);
+      this.cleanupStreamingTorrent();
+    });
+
+    // Reset timeout when VLC is active
+    this.resetStreamingTimeout();
   }
 }
 
