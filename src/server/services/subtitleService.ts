@@ -1,4 +1,4 @@
-// @ts-ignore - No type definitions available for opensubtitles.com
+// @ts-expect-error - No type definitions available for opensubtitles.com
 import OpenSubtitles from 'opensubtitles.com';
 import { createWriteStream, existsSync, mkdirSync } from 'fs';
 import { join } from 'path';
@@ -84,7 +84,7 @@ class SubtitleService {
     }
 
     try {
-      const searchParams: any = {
+      const searchParams: { languages: string; imdb_id?: string; query?: string } = {
         languages: 'en'
       };
 
@@ -108,8 +108,8 @@ class SubtitleService {
 
       // Map response to our Subtitle interface
       const subtitles: Subtitle[] = response.data
-        .filter((sub: any) => sub.attributes?.language === 'en')
-        .map((sub: any) => ({
+        .filter((sub: { attributes?: { language?: string } }) => sub.attributes?.language === 'en')
+        .map((sub: { id: string; attributes: { language: string; files?: Array<{ file_name?: string; file_id?: string }>; download_count?: number; ratings?: number } }) => ({
           id: sub.id,
           language: sub.attributes.language,
           fileName: sub.attributes.files?.[0]?.file_name || 'subtitle.srt',

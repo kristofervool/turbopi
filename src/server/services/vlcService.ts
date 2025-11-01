@@ -63,7 +63,7 @@ class VLCService {
           console.log('VLC HTTP interface ready');
           return true;
         }
-      } catch (error) {
+      } catch {
         // VLC not ready yet, wait and retry
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
@@ -92,7 +92,7 @@ class VLCService {
         length: data.length || 0,
         volume: data.volume || 256
       };
-    } catch (error) {
+    } catch {
       // Silently fail - this is polled frequently
       return null;
     }

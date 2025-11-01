@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Subtitles, Loader2, Download, Check, X } from 'lucide-react';
+import { Subtitles, Loader2, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -9,7 +9,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Badge } from '@/components/ui/badge';
 import { searchSubtitles, loadSubtitle, selectSubtitleTrack } from '../services/api';
 import type { Subtitle } from '../types/index';
 

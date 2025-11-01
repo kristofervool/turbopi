@@ -12,7 +12,6 @@ export default function Library() {
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
 
   const loadLibrary = async () => {

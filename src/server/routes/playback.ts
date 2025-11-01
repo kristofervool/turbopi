@@ -172,25 +172,24 @@ router.post('/play', async (req: Request, res: Response): Promise<void> => {
       const vlcConfig = getVLCConfig();
       const streamUrl = `http://localhost:${config.PORT}/api/playback/stream-local/${movieId}`;
 
-      const spawnOptions: any = {
-        stdio: 'inherit'
-      };
-
       // Only set display env vars on Linux
-      if (process.platform !== 'darwin') {
-        spawnOptions.env = {
-          ...process.env,
-          DISPLAY: config.VLC_DISPLAY,
-          XAUTHORITY: config.VLC_XAUTHORITY
-        };
-      }
-
-      const vlcProcess = spawn(vlcConfig.path, vlcConfig.args(streamUrl), spawnOptions);
+      const vlcProcess = process.platform !== 'darwin'
+        ? spawn(vlcConfig.path, vlcConfig.args(streamUrl), {
+            stdio: 'inherit',
+            env: {
+              ...process.env,
+              DISPLAY: config.VLC_DISPLAY,
+              XAUTHORITY: config.VLC_XAUTHORITY
+            }
+          })
+        : spawn(vlcConfig.path, vlcConfig.args(streamUrl), {
+            stdio: 'inherit'
+          });
 
       // Register session with VLC service
       vlcService.setSession(vlcProcess, movie.title, movie.thumbnail, movie.imdbCode);
 
-      vlcProcess.on('error', (err) => {
+      vlcProcess.on('error', (err: Error) => {
         console.error('Failed to launch VLC:', err.message);
         console.error('Make sure VLC is installed:');
         if (process.platform === 'darwin') {
@@ -201,7 +200,7 @@ router.post('/play', async (req: Request, res: Response): Promise<void> => {
         vlcService.clearSession();
       });
 
-      vlcProcess.on('exit', (code) => {
+      vlcProcess.on('exit', (code: number | null) => {
         console.log(`VLC exited with code ${code} (local playback)`);
         vlcService.clearSession();
       });

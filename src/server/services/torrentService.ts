@@ -7,6 +7,7 @@ import metadataService from './metadataService.js';
 import vlcService from './vlcService.js';
 import { spawn } from 'child_process';
 import { pipeline } from 'stream';
+import type { Response } from 'express';
 
 class TorrentService {
   private client: WebTorrent.Instance;
@@ -211,7 +212,7 @@ class TorrentService {
   createStreamPipeline(
     start: number,
     end: number,
-    res: any
+    res: Response
   ): void {
     if (!this.currentStreamingFile) {
       throw new Error('No file is currently streaming');
@@ -272,25 +273,24 @@ class TorrentService {
     const vlcPath = this.getVLCPath();
     const args = this.getVLCArgs();
 
-    const spawnOptions: any = {
-      stdio: 'inherit'
-    };
-
     // Only set display env vars on Linux
-    if (process.platform !== 'darwin') {
-      spawnOptions.env = {
-        ...process.env,
-        DISPLAY: config.VLC_DISPLAY,
-        XAUTHORITY: config.VLC_XAUTHORITY
-      };
-    }
-
-    const vlcProcess = spawn(vlcPath, args, spawnOptions);
+    const vlcProcess = process.platform !== 'darwin'
+      ? spawn(vlcPath, args, {
+          stdio: 'inherit',
+          env: {
+            ...process.env,
+            DISPLAY: config.VLC_DISPLAY,
+            XAUTHORITY: config.VLC_XAUTHORITY
+          }
+        })
+      : spawn(vlcPath, args, {
+          stdio: 'inherit'
+        });
 
     // Register VLC session with vlcService
     vlcService.setSession(vlcProcess, this.currentStreamingTitle, this.currentStreamingThumbnail, this.currentStreamingImdbCode);
 
-    vlcProcess.on('error', (err) => {
+    vlcProcess.on('error', (err: Error) => {
       console.error('Failed to launch VLC:', err.message);
       console.error('Make sure VLC is installed:');
       if (process.platform === 'darwin') {
@@ -302,7 +302,7 @@ class TorrentService {
     });
 
     // Cleanup when VLC closes
-    vlcProcess.on('exit', (code) => {
+    vlcProcess.on('exit', (code: number | null) => {
       console.log(`VLC exited with code ${code}, cleaning up streaming torrent...`);
       this.cleanupStreamingTorrent();
       vlcService.clearSession();
