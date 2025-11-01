@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+src/client/node_modules/
+
+# Build outputs
+dist/
+src/client/dist/
+
+# Environment variables
+.env
+.env.local
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs
+logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Movies directory (local storage)
+movies/
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.webm
+metadata.json

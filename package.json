@@ -1,32 +1,46 @@
 {
-  "name": "pi-streamer",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "turbopi",
+  "version": "2.0.0",
+  "main": "dist/server/index.js",
   "type": "module",
- "scripts": {
-  "start": "node src/index.js"
-},
-
-  "keywords": [],
+  "scripts": {
+    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
+    "server:dev": "tsx watch src/server/index.ts",
+    "client:dev": "cd src/client && npm run dev",
+    "build": "npm run build:server && npm run build:client",
+    "build:server": "tsc",
+    "build:client": "cd src/client && npm run build",
+    "start": "node dist/server/index.js",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["raspberry-pi", "torrent", "streaming", "movies"],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "description": "Movie streaming server for Raspberry Pi with torrent support",
   "dependencies": {
     "axios": "^1.9.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
     "express": "^5.1.0",
-    "nodemon": "^3.1.10",
+    "uuid": "^11.0.5",
     "webtorrent": "^2.6.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.1",
+    "@types/cors": "^2.8.17",
     "@types/express": "^5.0.1",
     "@types/node": "^22.15.3",
+    "@types/uuid": "^10.0.0",
     "@types/webtorrent": "^0.110.0",
     "@typescript-eslint/eslint-plugin": "^8.22.0",
     "@typescript-eslint/parser": "^8.22.0",
+    "concurrently": "^9.1.2",
     "eslint": "^9.25.1",
     "globals": "^16.0.0",
+    "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
     "turbo": "^2.5.2",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.31.1"
