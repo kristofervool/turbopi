@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Loader2 } from 'lucide-react';
 import SearchBar from '../components/SearchBar.tsx';
 import MovieCard from '../components/MovieCard.tsx';
 import MovieModal from '../components/MovieModal.tsx';
@@ -72,28 +73,48 @@ export default function Search() {
   };
 
   return (
-    <div className="page">
-      <h1>Search Movies</h1>
-      <SearchBar onSearch={handleSearch} placeholder="Search YTS movies..." />
-
-      {loading && <p className="loading">Searching...</p>}
-      {error && <p className="error">{error}</p>}
-
-      <div className="movies-grid">
-        {movies.map((movie) => (
-          <div key={movie.id} onClick={() => handleMovieClick(movie)}>
-            <MovieCard movie={movie} />
-          </div>
-        ))}
+    <div className="space-y-6">
+      <div className="space-y-2 text-center">
+        <h1 className="text-3xl font-bold tracking-tight">Search Movies</h1>
+        <p className="text-muted-foreground">
+          Search and stream movies instantly from YTS
+        </p>
       </div>
 
+      <SearchBar onSearch={handleSearch} placeholder="Search YTS movies..." />
+
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+
+      {error && (
+        <div className="text-center py-12">
+          <p className="text-destructive">{error}</p>
+        </div>
+      )}
+
+      {!loading && movies.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+          {movies.map((movie) => (
+            <div key={movie.id} onClick={() => handleMovieClick(movie)} className="cursor-pointer">
+              <MovieCard movie={movie} />
+            </div>
+          ))}
+        </div>
+      )}
+
       {!loading && movies.length === 0 && !error && (
-        <p className="empty-state">Search for movies to get started</p>
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">Search for movies to get started</p>
+        </div>
       )}
 
       {selectedMovie && (
         <MovieModal
           movie={selectedMovie}
+          open={!!selectedMovie}
           onClose={handleCloseModal}
           onPlay={handlePlay}
           onDownload={handleDownload}

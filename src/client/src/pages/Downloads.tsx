@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 import DownloadProgress from '../components/DownloadProgress.tsx';
 import type { DownloadProgress as DownloadProgressType } from '../types/index.js';
 import { getAllDownloads } from '../services/api.js';
@@ -29,20 +30,38 @@ export default function Downloads() {
   }, []);
 
   return (
-    <div className="page">
-      <h1>Active Downloads</h1>
-
-      {loading && <p className="loading">Loading downloads...</p>}
-      {error && <p className="error">{error}</p>}
-
-      <div className="downloads-list">
-        {downloads.map((download) => (
-          <DownloadProgress key={download.id} download={download} />
-        ))}
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">Active Downloads</h1>
+        <p className="text-muted-foreground">
+          {downloads.length} {downloads.length === 1 ? 'download' : 'downloads'} in progress
+        </p>
       </div>
 
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+
+      {error && (
+        <div className="text-center py-12">
+          <p className="text-destructive">{error}</p>
+        </div>
+      )}
+
+      {!loading && downloads.length > 0 && (
+        <div className="space-y-4">
+          {downloads.map((download) => (
+            <DownloadProgress key={download.id} download={download} />
+          ))}
+        </div>
+      )}
+
       {!loading && downloads.length === 0 && !error && (
-        <p className="empty-state">No active downloads</p>
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">No active downloads</p>
+        </div>
       )}
     </div>
   );

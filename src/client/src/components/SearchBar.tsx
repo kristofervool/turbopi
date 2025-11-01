@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
@@ -16,17 +19,18 @@ export default function SearchBar({ onSearch, placeholder = 'Search movies...' }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="search-bar">
-      <input
+    <form onSubmit={handleSubmit} className="flex gap-2 w-full max-w-2xl mx-auto">
+      <Input
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={placeholder}
-        className="search-input"
+        className="flex-1"
       />
-      <button type="submit" className="search-button">
-        🔍 Search
-      </button>
+      <Button type="submit">
+        <Search className="h-4 w-4 md:mr-2" />
+        <span className="hidden md:inline">Search</span>
+      </Button>
     </form>
   );
 }

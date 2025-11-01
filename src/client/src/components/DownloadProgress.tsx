@@ -1,4 +1,8 @@
+import { Download, Upload, Users } from 'lucide-react';
 import type { DownloadProgress as DownloadProgressType } from '../types/index.js';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 
 interface DownloadProgressProps {
   download: DownloadProgressType;
@@ -17,35 +21,65 @@ export default function DownloadProgress({ download }: DownloadProgressProps) {
     return `${formatBytes(bytesPerSec)}/s`;
   };
 
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'downloading':
+        return 'default';
+      case 'seeding':
+        return 'secondary';
+      case 'complete':
+        return 'secondary';
+      case 'error':
+        return 'destructive';
+      default:
+        return 'outline';
+    }
+  };
+
   return (
-    <div className="download-item">
-      <div className="download-header">
-        <h3>{download.title}</h3>
-        <span className={`status status-${download.status}`}>
-          {download.status}
-        </span>
-      </div>
-
-      <div className="progress-bar">
-        <div
-          className="progress-fill"
-          style={{ width: `${download.progress}%` }}
-        />
-      </div>
-
-      <div className="download-stats">
-        <span>{download.progress.toFixed(1)}%</span>
-        <span>↓ {formatSpeed(download.downloadSpeed)}</span>
-        <span>↑ {formatSpeed(download.uploadSpeed)}</span>
-        <span>👥 {download.numPeers}</span>
-        <span>{formatBytes(download.downloaded)} / {formatBytes(download.total)}</span>
-      </div>
-
-      {download.error && (
-        <div className="error-message">
-          Error: {download.error}
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-4">
+          <CardTitle className="text-lg line-clamp-1">{download.title}</CardTitle>
+          <Badge variant={getStatusVariant(download.status)}>
+            {download.status}
+          </Badge>
         </div>
-      )}
-    </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Progress</span>
+            <span className="font-medium">{download.progress.toFixed(1)}%</span>
+          </div>
+          <Progress value={download.progress} />
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+          <div className="flex items-center gap-2">
+            <Download className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">{formatSpeed(download.downloadSpeed)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Upload className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">{formatSpeed(download.uploadSpeed)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">{download.numPeers} peers</span>
+          </div>
+          <div className="text-muted-foreground">
+            {formatBytes(download.downloaded)} / {formatBytes(download.total)}
+          </div>
+        </div>
+
+        {download.error && (
+          <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+            Error: {download.error}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
