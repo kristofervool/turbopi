@@ -13,6 +13,7 @@ export default function Library() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isScanning, setIsScanning] = useState(false);
+  const [scanMessage, setScanMessage] = useState<string | null>(null);
 
   const loadLibrary = async () => {
     setLoading(true);
@@ -33,7 +34,6 @@ export default function Library() {
   }, []);
 
   const handleSearch = async (query: string) => {
-    setIsSearching(true);
     setError('');
     try {
       const results = await searchLibrary(query);
@@ -41,8 +41,6 @@ export default function Library() {
     } catch (err) {
       setError('Failed to search library');
       console.error(err);
-    } finally {
-      setIsSearching(false);
     }
   };
 
@@ -73,13 +71,20 @@ export default function Library() {
 
   const handleScan = async () => {
     setIsScanning(true);
+    setScanMessage(null);
     try {
       const result = await scanLibrary();
-      alert(`Scanned library: ${result.count} movies found`);
+      setScanMessage(`Scanned: ${result.count} ${result.count === 1 ? 'movie' : 'movies'} found`);
       await loadLibrary();
+
+      // Clear message after 5 seconds
+      setTimeout(() => setScanMessage(null), 5000);
     } catch (err) {
-      alert('Failed to scan library');
+      setScanMessage('Failed to scan library');
       console.error(err);
+
+      // Clear error message after 5 seconds
+      setTimeout(() => setScanMessage(null), 5000);
     } finally {
       setIsScanning(false);
     }
@@ -89,15 +94,21 @@ export default function Library() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="space-y-2">
-          <h1 className="text-3xl font-bold tracking-tight">My Library</h1>
           <p className="text-muted-foreground">
             {movies.length} {movies.length === 1 ? 'movie' : 'movies'} in your collection
           </p>
         </div>
-        <Button onClick={handleScan} disabled={isScanning} variant="outline">
-          <RefreshCw className={`h-4 w-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
-          Scan Library
-        </Button>
+        <div className="flex flex-row gap-2 items-center">
+          <Button onClick={handleScan} disabled={isScanning} variant="outline">
+            <RefreshCw className={`h-4 w-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
+            Scan Library
+          </Button>
+          {scanMessage && (
+            <p className="text-sm text-muted-foreground px-3 py-2 bg-muted rounded-md whitespace-nowrap">
+              {scanMessage}
+            </p>
+          )}
+        </div>
       </div>
 
       <SearchBar onSearch={handleSearch} placeholder="Search your library..." />
@@ -116,7 +127,7 @@ export default function Library() {
 
       {!loading && movies.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {movies.map((movie) => (
+          {movies.map(movie => (
             <MovieCard
               key={movie.id}
               movie={movie}
@@ -125,12 +136,6 @@ export default function Library() {
               isLocal={true}
             />
           ))}
-        </div>
-      )}
-
-      {!loading && movies.length === 0 && !error && (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No movies in your library yet</p>
         </div>
       )}
     </div>

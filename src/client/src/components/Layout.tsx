@@ -6,13 +6,23 @@ import { useState, useEffect } from 'react';
 export default function Layout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const [darkMode, setDarkMode] = useState(() => {
-    // Check system preference
+    // Check localStorage first, then fall back to system preference
+    const stored = localStorage.getItem('theme');
+    if (stored) {
+      return stored === 'dark';
+    }
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
   useEffect(() => {
-    // Tailwind v4 uses prefers-color-scheme by default
-    // We can still toggle manually if needed in future
+    // Apply dark class to document element
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    // Persist preference
+    localStorage.setItem('theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
   const isActive = (path: string) => location.pathname === path;

@@ -83,12 +83,6 @@ export default function Search() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2 text-center">
-        <h1 className="text-3xl font-bold tracking-tight">Search Movies</h1>
-        <p className="text-muted-foreground">
-          Search and stream movies instantly from YTS
-        </p>
-      </div>
 
       <SearchBar onSearch={handleSearch} placeholder="Search YTS movies..." />
 
@@ -111,12 +105,6 @@ export default function Search() {
               <MovieCard movie={movie} />
             </div>
           ))}
-        </div>
-      )}
-
-      {!loading && movies.length === 0 && !error && (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">Search for movies to get started</p>
         </div>
       )}
 

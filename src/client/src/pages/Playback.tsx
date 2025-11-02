@@ -71,22 +71,22 @@ export default function Playback() {
     : 0;
 
   return (
-    <div className="fixed inset-0 bg-background flex flex-col items-center justify-center p-4 md:p-8">
+    <div className="fixed inset-0 bg-background flex flex-col items-center justify-center p-4 md:p-8 overflow-y-auto">
       {/* Close Button */}
       <Button
         variant="ghost"
         size="icon"
-        className="absolute top-4 right-4 text-muted-foreground hover:text-foreground"
+        className="absolute top-4 right-4 text-muted-foreground hover:text-foreground z-10"
         onClick={handleStopClick}
       >
         <X className="h-6 w-6" />
       </Button>
 
       {/* Content Container */}
-      <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-8">
+      <div className="w-full max-w-4xl mx-auto flex flex-col items-center gap-4 md:gap-8 py-4">
         {/* Movie Poster/Thumbnail */}
         {status.thumbnail && (
-          <div className="w-full max-w-md aspect-[2/3] rounded-xl overflow-hidden shadow-2xl">
+          <div className="w-full max-w-[200px] md:max-w-md aspect-[2/3] rounded-xl overflow-hidden shadow-2xl">
             <img
               src={status.thumbnail}
               alt={status.title}
@@ -96,15 +96,15 @@ export default function Playback() {
         )}
 
         {/* Movie Title */}
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl md:text-4xl font-bold">{status.title || 'Now Playing'}</h1>
-          <p className="text-lg text-muted-foreground">
+        <div className="text-center space-y-1">
+          <h1 className="text-2xl md:text-4xl font-bold">{status.title || 'Now Playing'}</h1>
+          <p className="text-base md:text-lg text-muted-foreground">
             {status.isPlaying ? 'Playing on TV' : 'Paused'}
           </p>
         </div>
 
         {/* Progress Section */}
-        <div className="w-full space-y-4">
+        <div className="w-full space-y-2 md:space-y-4">
           {/* Time Display */}
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>{formatTime(status.currentTime || 0)}</span>
@@ -130,35 +130,30 @@ export default function Playback() {
               <div className="absolute inset-y-0 bg-primary/30" style={{ width: '100%' }} />
             </div>
           </div>
-
-          {/* Percentage */}
-          <div className="text-center text-2xl font-semibold">
-            {progress.toFixed(1)}%
-          </div>
         </div>
 
         {/* Control Buttons */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 md:gap-4">
           {/* Skip Back */}
           <Button
             variant="outline"
             size="lg"
             onClick={skipBackward}
-            className="w-16 h-16 rounded-full"
+            className="w-14 h-14 md:w-16 md:h-16 rounded-full"
           >
-            <SkipBack className="h-6 w-6" />
+            <SkipBack className="h-5 w-5 md:h-6 md:w-6" />
           </Button>
 
           {/* Play/Pause */}
           <Button
             size="lg"
             onClick={handlePause}
-            className="w-20 h-20 rounded-full"
+            className="w-16 h-16 md:w-20 md:h-20 rounded-full"
           >
             {status.isPlaying ? (
-              <Pause className="h-8 w-8" />
+              <Pause className="h-6 w-6 md:h-8 md:w-8" />
             ) : (
-              <Play className="h-8 w-8 ml-1" />
+              <Play className="h-6 w-6 md:h-8 md:w-8 ml-1" />
             )}
           </Button>
 
@@ -167,9 +162,9 @@ export default function Playback() {
             variant="outline"
             size="lg"
             onClick={skipForward}
-            className="w-16 h-16 rounded-full"
+            className="w-14 h-14 md:w-16 md:h-16 rounded-full"
           >
-            <SkipForward className="h-6 w-6" />
+            <SkipForward className="h-5 w-5 md:h-6 md:w-6" />
           </Button>
 
           {/* Subtitle Selector */}
@@ -181,7 +176,7 @@ export default function Playback() {
           variant="destructive"
           size="lg"
           onClick={handleStopClick}
-          className="px-8"
+          className="px-6 md:px-8"
         >
           <X className="h-5 w-5 mr-2" />
           Stop Playback

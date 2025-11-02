@@ -32,7 +32,6 @@ export default function Downloads() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Active Downloads</h1>
         <p className="text-muted-foreground">
           {downloads.length} {downloads.length === 1 ? 'download' : 'downloads'} in progress
         </p>
@@ -55,12 +54,6 @@ export default function Downloads() {
           {downloads.map((download) => (
             <DownloadProgress key={download.id} download={download} />
           ))}
-        </div>
-      )}
-
-      {!loading && downloads.length === 0 && !error && (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">No active downloads</p>
         </div>
       )}
     </div>

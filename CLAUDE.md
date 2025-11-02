@@ -18,9 +18,10 @@ TurboPi is a full-stack TypeScript application for Raspberry Pi 5 that enables s
 
 ## Development Commands
 
-- **Start dev environment**: `npm run dev` - Runs both backend and frontend concurrently
+- **Start dev environment**: `npm run dev` - Builds client once, then runs backend with tsx watch and client in watch mode
+- **Start dev (separate)**: `npm run dev:separate` - Runs backend and frontend on separate ports (backend: 3000, frontend: 5173 with Vite HMR)
 - **Start backend only**: `npm run server:dev` - Backend on port 3000 with tsx watch
-- **Start frontend only**: `npm run client:dev` - Frontend on port 5173 with Vite
+- **Start frontend only**: `npm run client:dev` - Frontend on port 5173 with Vite HMR
 - **Build for production**: `npm run build` - Compiles TypeScript and builds React app
 - **Start production**: `npm start` - Runs compiled server (serves React build)
 - **Type check**: `npm run typecheck` - Run TypeScript compiler without emitting files
@@ -41,7 +42,8 @@ src/
 │   │   ├── torrentService.ts    # WebTorrent management
 │   │   ├── libraryService.ts    # File system scanning
 │   │   ├── metadataService.ts   # JSON metadata CRUD
-│   │   └── vlcService.ts        # VLC HTTP control
+│   │   ├── vlcService.ts        # VLC HTTP control
+│   │   └── subtitleService.ts   # OpenSubtitles integration
 │   └── routes/          # API endpoints
 │       ├── search.ts    # YTS movie search
 │       ├── library.ts   # Local movie management
@@ -61,6 +63,7 @@ src/
         │   ├── SearchBar.tsx
         │   ├── DownloadProgress.tsx
         │   ├── PlaybackBar.tsx
+        │   ├── SubtitleSelector.tsx
         │   └── Layout.tsx
         ├── hooks/       # Custom React hooks
         │   └── usePlayback.ts
@@ -95,6 +98,12 @@ src/
 - **POST /api/playback/stop** - Stop playback
 - **GET /api/playback/stream** - Stream torrent file (for VLC)
 - **GET /api/playback/stream-local/:id** - Stream local file (for VLC)
+
+**Subtitles:**
+- **GET /api/playback/subtitles/search** - Search for English subtitles using OpenSubtitles API
+- **POST /api/playback/subtitles/load** - Download and load subtitle file into VLC
+- **GET /api/playback/subtitles/tracks** - Get available subtitle tracks in current playback
+- **POST /api/playback/subtitles/select** - Select subtitle track by ID (-1 to disable)
 
 ### Data Flow
 
@@ -137,12 +146,22 @@ src/
 - `getSession()` - Get current playback session
 - `clearSession()` - Clear playback session
 - `waitForVLC()` - Wait for VLC HTTP interface to be ready
-- `getStatus()` - Get playback status (state, position, time, length)
+- `getStatus()` - Get playback status (state, position, time, length, subtitle tracks)
 - `play()` - Resume playback
 - `pause()` - Toggle pause
 - `seek(seconds)` - Seek to position
 - `stop()` - Stop playback and kill VLC process
+- `getSubtitleTracks()` - Get available subtitle tracks
+- `selectSubtitleTrack(trackId)` - Select subtitle track by ID
 - VLC HTTP interface runs on port 8080 with password 'turbopi'
+
+**subtitleService.ts** - OpenSubtitles integration:
+- `searchSubtitles(imdbCode?, movieTitle?)` - Search for English subtitles via OpenSubtitles API
+- `downloadSubtitle(fileId, fileName)` - Download subtitle file and return local path
+- `getSubtitlesDir()` - Get temporary directory path for subtitles
+- Uses OpenSubtitles.com REST API v1
+- Requires API key, username, and password for downloads
+- Stores subtitles in system temp directory
 
 **libraryService.ts** - File system operations:
 - `scanLibrary()` - Scan MOVIES_DIR, sync with metadata
@@ -169,6 +188,7 @@ src/
 - **MovieCard** - Displays movie poster, title, year, rating, genres
 - **PlaybackBar** - Bottom bar showing current playback (when active)
 - **DownloadProgress** - Progress bar with download stats
+- **SubtitleSelector** - Subtitle search, download, and selection dialog
 - **Layout** - Navigation wrapper with PlaybackBar (not used on /playback route)
 
 **Hooks:**
@@ -178,9 +198,10 @@ src/
 
 **API Client** (src/client/src/services/api.ts):
 - Axios instance with `/api` base URL
-- Vite dev server proxies `/api` to backend (port 3000)
+- Vite dev server proxies `/api` to backend (port 3000) in dev:separate mode
+- Production and standard dev mode serve frontend from backend
 - Type-safe requests using shared TypeScript interfaces
-- Functions: `searchMovies`, `getLibrary`, `scanLibrary`, `deleteMovie`, `downloadMovie`, `getDownloads`, `playMovie`, `getPlaybackStatus`, `togglePause`, `seekPlayback`, `stopPlayback`
+- Functions: `searchMovies`, `getLibrary`, `scanLibrary`, `deleteMovie`, `downloadMovie`, `getDownloads`, `playMovie`, `getPlaybackStatus`, `togglePause`, `seekPlayback`, `stopPlayback`, `searchSubtitles`, `loadSubtitle`, `getSubtitleTracks`, `selectSubtitleTrack`
 
 **UI Components** (shadcn/ui):
 - Button, Card, Input, Badge, Progress, Dialog, RadioGroup, Label
@@ -195,6 +216,10 @@ Environment variables (create `.env` from `.env.example`):
 - `MOVIES_DIR` - Where to store downloaded movies
 - `DISPLAY` - X11 display for VLC (default: :0) - Linux only
 - `XAUTHORITY` - X11 auth file path - Linux only
+- `OPENSUBTITLES_API_KEY` - OpenSubtitles.com API key (get from https://www.opensubtitles.com/en/consumers)
+- `OPENSUBTITLES_USER_AGENT` - User agent for API requests (default: TurboPi v1.0)
+- `OPENSUBTITLES_USERNAME` - OpenSubtitles account username (required for subtitle downloads)
+- `OPENSUBTITLES_PASSWORD` - OpenSubtitles account password (required for subtitle downloads)
 - `NODE_ENV` - development | production
 
 ### Network Access
@@ -251,7 +276,8 @@ Key interfaces in `src/server/types/index.ts`:
 - **YTSTorrent** - Torrent quality/hash info
 - **DownloadProgress** - Live download status (id, magnetUri, title, progress, downloadSpeed, uploadSpeed, numPeers, downloaded, total, status, error)
 - **Config** - Environment configuration
-- **PlaybackStatus** - Playback state (isActive, isPlaying, currentTime, duration, title, thumbnail)
+- **PlaybackStatus** - Playback state (isActive, isPlaying, currentTime, duration, title, thumbnail, imdbCode, hasSubtitles)
+- **Subtitle** - Subtitle metadata from OpenSubtitles (id, language, fileName, downloadCount, rating, fileId)
 
 Same types mirrored in frontend at `src/client/src/types/index.ts`
 
@@ -281,12 +307,15 @@ Same types mirrored in frontend at `src/client/src/types/index.ts`
 
 - Backend uses ESM modules (`.js` imports in TypeScript)
 - Backend watches for changes with `tsx watch`
-- Frontend has hot module reloading via Vite
-- CORS enabled in development for separate ports
+- Standard `npm run dev` builds frontend once then watches, serving from backend
+- Use `npm run dev:separate` for Vite HMR on separate port (better for UI development)
+- CORS enabled in development when using separate ports
 - Production serves React build as static files from Express
 - No database required - uses JSON file storage for simplicity on Pi
 - VLC HTTP interface allows remote control from frontend
 - Library is scanned automatically on server startup
 - Playback page polls status every 2 seconds for real-time updates
 - MovieModal uses Radix UI RadioGroup for quality selection
+- SubtitleSelector searches OpenSubtitles.com and loads subtitles into VLC
+- Subtitles are downloaded to system temp directory and loaded into VLC via HTTP API
 - All UI components follow shadcn/ui conventions
