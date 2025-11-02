@@ -26,19 +26,20 @@ app.use('/api/library', libraryRouter);
 app.use('/api/download', downloadRouter);
 app.use('/api/playback', playbackRouter);
 
-// Serve static files from React build in production
-if (config.NODE_ENV === 'production') {
-  const clientBuildPath = path.join(__dirname, '../../client/dist');
-  app.use(express.static(clientBuildPath));
+// Serve static files from React build
+// In dev mode: __dirname is src/server, client build is at src/client/dist
+// In production: __dirname is dist/server, client build is at src/client/dist
+const clientBuildPath = config.NODE_ENV === 'production'
+  ? path.join(__dirname, '../../src/client/dist')
+  : path.join(__dirname, '../client/dist');
 
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(clientBuildPath, 'index.html'));
-  });
-} else {
-  app.get('/', (req, res) => {
-    res.json({ message: 'TurboPi API Server' });
-  });
-}
+app.use(express.static(clientBuildPath));
+
+// Handle client-side routing - serve index.html for all non-API routes
+// This must be after all other routes so API routes are matched first
+app.use((req, res) => {
+  res.sendFile(path.join(clientBuildPath, 'index.html'));
+});
 
 // Initialize library on startup
 (async () => {
@@ -64,9 +65,9 @@ app.listen(config.PORT, config.HOST, () => {
     console.log(`   Network: http://${localIp}:${config.PORT}`);
   }
 
-  // Advertise mDNS service
+  // Advertise mDNS service (will log its own status)
   advertiseMdns(config.PORT);
 
-  console.log(`\n💡 From your phone, open: http://turbopi.local:${config.PORT}`);
+  console.log('\n💡 Tip: From your phone, use the mDNS URL or Network IP above');
   console.log('─────────────────────────────────────\n');
 });

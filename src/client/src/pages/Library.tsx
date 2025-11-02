@@ -33,7 +33,6 @@ export default function Library() {
   }, []);
 
   const handleSearch = async (query: string) => {
-    setIsSearching(true);
     setError('');
     try {
       const results = await searchLibrary(query);
@@ -41,8 +40,6 @@ export default function Library() {
     } catch (err) {
       setError('Failed to search library');
       console.error(err);
-    } finally {
-      setIsSearching(false);
     }
   };
 

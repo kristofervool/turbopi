@@ -4,9 +4,11 @@
   "main": "dist/server/index.js",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
+    "dev": "npm run build:client && concurrently \"npm run server:dev\" \"npm run client:watch\"",
+    "dev:separate": "concurrently \"npm run server:dev\" \"npm run client:dev\"",
     "server:dev": "tsx watch src/server/index.ts",
     "client:dev": "cd src/client && npm run dev",
+    "client:watch": "cd src/client && npm run build -- --watch",
     "build": "npm run build:server && npm run build:client",
     "build:server": "tsc",
     "build:client": "cd src/client && npm run build",
