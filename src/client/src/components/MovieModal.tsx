@@ -103,7 +103,6 @@ export default function MovieModal({ movie, open, onClose, onPlay, onDownload }:
                 ))}
               </RadioGroup>
             </div>
-
             <DialogFooter className="gap-2 sm:gap-0">
               <Button variant="default" onClick={() => onPlay(selectedTorrent)} className="flex-1">
                 <Play className="h-4 w-4 mr-2" />
