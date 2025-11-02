@@ -1,0 +1,26 @@
+[Unit]
+Description=TurboPi Movie Streaming Service
+Documentation=https://github.com/yourusername/turbopi
+After=network-online.target avahi-daemon.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/turbopi
+Environment=NODE_ENV=production
+Environment=PATH=/usr/bin:/usr/local/bin
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=turbopi
+
+# Security hardening (optional - uncomment if desired)
+# NoNewPrivileges=true
+# PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
