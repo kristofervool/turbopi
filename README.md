@@ -19,7 +19,7 @@ A full-stack TypeScript movie streaming application, built for Raspberry Pi 5.
 ## Prerequisites
 
 - Raspberry Pi 5 (or compatible Linux system)
-- Node.js 18+ and npm
+- Node.js 18+
 - VLC media player: `sudo apt install vlc`
 - X11 display server running
 
