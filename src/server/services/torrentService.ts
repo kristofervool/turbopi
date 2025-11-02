@@ -23,7 +23,13 @@ class TorrentService {
   private readonly STREAMING_TIMEOUT_MS = 0; // Disabled
 
   constructor() {
-    this.client = new WebTorrent();
+    // Optimize WebTorrent for Raspberry Pi
+    // Reduce max connections to prevent CPU contention on resource-constrained devices
+    this.client = new WebTorrent({
+      maxConns: 20,        // Default is 55 - lower reduces CPU load on Pi
+      dht: true,           // Keep DHT enabled for peer discovery
+      webSeeds: true       // Keep web seeds enabled
+    });
   }
 
   async downloadTorrent(

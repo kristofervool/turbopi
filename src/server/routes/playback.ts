@@ -129,7 +129,9 @@ function getVLCConfig() {
         url,
         '--fullscreen',
         '--no-video-title-show',
-        '--avcodec-hw=none',
+        '--vout=drm',                    // DRM video output for hardware acceleration
+        '--avcodec-hw=drm',              // Enable hardware codec via DRM
+        '--codec=hevc_v4l2m2m,h264',     // HEVC HW decode, H.264 SW decode fallback
         '--aout=alsa',
         '--alsa-audio-device=hw:1,0',
         '--no-dbus',
