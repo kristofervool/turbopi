@@ -65,7 +65,9 @@ export interface Config {
   HOST: string;
   PORT: number;
   MOVIES_DIR: string;
+  TV_SHOWS_DIR: string;
   METADATA_FILE: string;
+  SHOWS_METADATA_FILE: string;
   VLC_DISPLAY: string;
   VLC_XAUTHORITY: string;
   NODE_ENV: string;
@@ -89,4 +91,74 @@ export interface Subtitle {
   downloadCount: number;
   rating: number;
   fileId: number;
+}
+
+// TV Show types
+export interface Episode {
+  id: string;
+  showId: string;
+  episodeNumber: number;
+  seasonNumber: number;
+  title?: string;
+  fileName: string;
+  filePath: string;
+  fileSize: number;
+  magnetUrl?: string;
+  addedAt: string;
+}
+
+export interface Season {
+  seasonNumber: number;
+  episodes: Episode[];
+}
+
+export interface TVShow {
+  id: string;
+  title: string;
+  imdbCode: string;
+  thumbnail?: string;
+  year?: number;
+  rating?: number;
+  genres?: string[];
+  seasons: Season[];
+  addedAt: string;
+}
+
+export interface ShowMetadata {
+  shows: TVShow[];
+}
+
+export interface EZTVTorrent {
+  id: number;
+  hash: string;
+  filename: string;
+  episode_url: string;
+  torrent_url: string;
+  magnet_url: string;
+  title: string;
+  imdb_id: string;
+  season: number;
+  episode: number;
+  small_screenshot: string;
+  large_screenshot: string;
+  seeds: number;
+  peers: number;
+  date_released_unix: number;
+  size_bytes: number;
+}
+
+export interface EZTVResponse {
+  torrents_count: number;
+  limit: number;
+  page: number;
+  torrents: EZTVTorrent[];
+}
+
+export interface ShowSearchResult {
+  imdbId: string;
+  title: string;
+  thumbnail?: string;
+  episodeCount: number;
+  latestSeason: number;
+  latestEpisode: number;
 }

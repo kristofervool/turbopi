@@ -66,3 +66,62 @@ export interface Subtitle {
   rating: number;
   fileId: number;
 }
+
+// TV Show types
+export interface Episode {
+  id: string;
+  showId: string;
+  episodeNumber: number;
+  seasonNumber: number;
+  title?: string;
+  fileName: string;
+  filePath: string;
+  fileSize: number;
+  magnetUrl?: string;
+  addedAt: string;
+}
+
+export interface Season {
+  seasonNumber: number;
+  episodes: Episode[];
+}
+
+export interface TVShow {
+  id: string;
+  title: string;
+  imdbCode: string;
+  thumbnail?: string;
+  year?: number;
+  rating?: number;
+  genres?: string[];
+  seasons: Season[];
+  addedAt: string;
+}
+
+export interface EZTVTorrent {
+  id: number;
+  hash: string;
+  filename: string;
+  episode_url: string;
+  torrent_url: string;
+  magnet_url: string;
+  title: string;
+  imdb_id: string;
+  season: number;
+  episode: number;
+  small_screenshot: string;
+  large_screenshot: string;
+  seeds: number;
+  peers: number;
+  date_released_unix: number;
+  size_bytes: number;
+}
+
+export interface ShowSearchResult {
+  imdbId: string;
+  title: string;
+  thumbnail?: string;
+  episodeCount: number;
+  latestSeason: number;
+  latestEpisode: number;
+}

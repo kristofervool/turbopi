@@ -7,7 +7,9 @@ import searchRouter from './routes/search.js';
 import libraryRouter from './routes/library.js';
 import downloadRouter from './routes/download.js';
 import playbackRouter from './routes/playback.js';
+import showsRouter from './routes/shows.js';
 import libraryService from './services/libraryService.js';
+import showLibraryService from './services/showLibraryService.js';
 import { getLocalIpAddress } from './utils/network.js';
 import { advertiseMdns } from './utils/mdns.js';
 
@@ -25,6 +27,7 @@ app.use('/api/search', searchRouter);
 app.use('/api/library', libraryRouter);
 app.use('/api/download', downloadRouter);
 app.use('/api/playback', playbackRouter);
+app.use('/api/shows', showsRouter);
 
 // Serve static files from React build
 // In dev mode: __dirname is src/server, client build is at src/client/dist
@@ -44,9 +47,13 @@ app.use((req, res) => {
 // Initialize library on startup
 (async () => {
   try {
-    console.log('Scanning library...');
+    console.log('Scanning movie library...');
     await libraryService.scanLibrary();
-    console.log('Library scan complete');
+    console.log('Movie library scan complete');
+
+    console.log('Scanning TV shows library...');
+    await showLibraryService.scanLibrary();
+    console.log('TV shows library scan complete');
   } catch (error) {
     console.error('Error scanning library:', error);
   }
@@ -57,6 +64,7 @@ app.listen(config.PORT, config.HOST, () => {
   console.log('─────────────────────────────────────');
   console.log(`Environment: ${config.NODE_ENV}`);
   console.log(`Movies directory: ${config.MOVIES_DIR}`);
+  console.log(`TV Shows directory: ${config.TV_SHOWS_DIR}`);
   console.log('\n📡 Access URLs:');
   console.log(`   Local:   http://localhost:${config.PORT}`);
 

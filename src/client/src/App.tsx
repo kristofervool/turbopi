@@ -4,6 +4,8 @@ import Search from './pages/Search';
 import Library from './pages/Library';
 import Downloads from './pages/Downloads';
 import Playback from './pages/Playback';
+import ShowsSearch from './pages/ShowsSearch';
+import ShowsLibrary from './pages/ShowsLibrary';
 
 function App() {
   return (
@@ -19,6 +21,8 @@ function App() {
               <Route path="/" element={<Search />} />
               <Route path="/library" element={<Library />} />
               <Route path="/downloads" element={<Downloads />} />
+              <Route path="/shows" element={<ShowsSearch />} />
+              <Route path="/shows/library" element={<ShowsLibrary />} />
             </Routes>
           </Layout>
         } />
