@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import eztvService from '../services/eztvService.js';
+import omdbService from '../services/omdbService.js';
 import showMetadataService from '../services/showMetadataService.js';
 import showLibraryService from '../services/showLibraryService.js';
 import torrentService from '../services/torrentService.js';
@@ -7,24 +8,59 @@ import { existsSync } from 'fs';
 import fs from 'fs/promises';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
-import type { TVShow, Episode } from '../types/index.js';
+import type { TVShow, Episode, ShowSearchResult } from '../types/index.js';
 
 const router = Router();
 
-// Search EZTV for shows (returns recent shows matching query)
+// Search for TV shows by title using OMDB, then check EZTV availability
 router.get('/search', async (req: Request, res: Response): Promise<void> => {
   const { query } = req.query;
 
+  if (!query || typeof query !== 'string') {
+    res.status(400).json({ error: 'Query parameter is required' });
+    return;
+  }
+
   try {
-    if (query && typeof query === 'string') {
-      // Search with query filter
-      const results = await eztvService.searchShows(query);
-      res.json(results);
-    } else {
-      // Return recent shows
-      const results = await eztvService.searchShows('');
-      res.json(results);
+    // Search OMDB for TV shows
+    const omdbResults = await omdbService.searchTVShows(query);
+
+    if (omdbResults.length === 0) {
+      res.json([]);
+      return;
     }
+
+    // Check EZTV for each show and get episode counts
+    const resultsWithAvailability = await Promise.all(
+      omdbResults.map(async (omdbShow) => {
+        const eztvShow = await eztvService.getShowByImdb(omdbShow.imdbId);
+
+        if (!eztvShow) {
+          // Show not available on EZTV, but still return it with 0 episodes
+          return {
+            imdbId: omdbShow.imdbId,
+            title: omdbShow.title,
+            thumbnail: omdbShow.poster,
+            episodeCount: 0,
+            latestSeason: 0,
+            latestEpisode: 0,
+            year: omdbShow.year
+          } as ShowSearchResult & { year: string };
+        }
+
+        // Show available on EZTV
+        return {
+          ...eztvShow,
+          thumbnail: omdbShow.poster || eztvShow.thumbnail, // Prefer OMDB poster
+          year: omdbShow.year
+        } as ShowSearchResult & { year: string };
+      })
+    );
+
+    // Filter to only shows with episodes available on EZTV
+    const availableShows = resultsWithAvailability.filter(show => show.episodeCount > 0);
+
+    res.json(availableShows);
   } catch (error) {
     console.error('Show search error:', error);
     res.status(500).json({ error: 'Failed to search shows' });

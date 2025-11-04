@@ -46,13 +46,12 @@ class EztvService {
   }
 
   /**
-   * Search for shows by extracting unique shows from recent torrents
-   * This is a workaround since EZTV doesn't have a dedicated show search endpoint
-   * @param query - Search query (show title)
+   * Get recent/popular shows from EZTV
+   * Shows all unique shows from recent torrents
    */
-  async searchShows(query: string): Promise<ShowSearchResult[]> {
+  async getRecentShows(): Promise<ShowSearchResult[]> {
     try {
-      // Get a larger batch of recent torrents to find matches
+      // Get a larger batch of recent torrents
       const torrents = await this.getRecentTorrents(100);
 
       // Group torrents by IMDB ID to get unique shows
@@ -61,11 +60,6 @@ class EztvService {
       torrents.forEach(torrent => {
         const imdbId = torrent.imdb_id;
         const title = this.extractShowTitle(torrent.title);
-
-        // Filter by query if provided
-        if (query && !title.toLowerCase().includes(query.toLowerCase())) {
-          return;
-        }
 
         if (!showsMap.has(imdbId)) {
           showsMap.set(imdbId, {
@@ -90,8 +84,46 @@ class EztvService {
       return Array.from(showsMap.values())
         .sort((a, b) => b.episodeCount - a.episodeCount); // Sort by episode count
     } catch (error) {
-      console.error('EZTV search error:', error);
-      throw new Error('Failed to search shows');
+      console.error('EZTV error:', error);
+      throw new Error('Failed to fetch recent shows');
+    }
+  }
+
+  /**
+   * Get show info by IMDB ID
+   * Returns show details with episode count
+   */
+  async getShowByImdb(imdbId: string): Promise<ShowSearchResult | null> {
+    try {
+      const torrents = await this.getTorrentsByImdb(imdbId);
+
+      if (torrents.length === 0) {
+        return null;
+      }
+
+      const title = this.extractShowTitle(torrents[0].title);
+      let latestSeason = 0;
+      let latestEpisode = 0;
+
+      torrents.forEach(torrent => {
+        if (torrent.season > latestSeason ||
+            (torrent.season === latestSeason && torrent.episode > latestEpisode)) {
+          latestSeason = torrent.season;
+          latestEpisode = torrent.episode;
+        }
+      });
+
+      return {
+        imdbId,
+        title,
+        thumbnail: torrents[0].small_screenshot,
+        episodeCount: torrents.length,
+        latestSeason,
+        latestEpisode
+      };
+    } catch (error) {
+      console.error(`EZTV error for IMDB ${imdbId}:`, error);
+      return null;
     }
   }
 

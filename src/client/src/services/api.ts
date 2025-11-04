@@ -117,9 +117,9 @@ export const selectSubtitleTrack = async (trackId: number): Promise<void> => {
 };
 
 // TV Shows API
-export const searchShows = async (query?: string): Promise<ShowSearchResult[]> => {
+export const searchShows = async (query: string): Promise<ShowSearchResult[]> => {
   const response = await api.get<ShowSearchResult[]>('/shows/search', {
-    params: query ? { query } : undefined,
+    params: { query }
   });
   return response.data;
 };
